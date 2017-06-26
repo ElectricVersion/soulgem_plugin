@@ -290,16 +290,6 @@ namespace SparkSoulGemPlugin
 			thisEntry = invList->GetNthItem(i);
 			if (thisEntry->type->formType == kFormType_SoulGem)
 			{
-				_MESSAGE("Count of %x", thisEntry->countDelta);
-				_MESSAGE("ExtendDataList of %x", thisEntry->type->formID);
-				DumpClass(thisEntry->extendDataList, 8);
-				for (int i2 = 0; i2 < thisEntry->extendDataList->Count(); i2++)
-				{
-					_MESSAGE("BaseExtraList of %x", thisEntry->type->formID);
-					DumpClass(thisEntry->extendDataList->GetNthItem(i2), 8);
-					_MESSAGE("BSExtraData of %x", thisEntry->type->formID);
-					DumpClass(thisEntry->extendDataList->GetNthItem(i2)->GetByType(kExtraData_Soul),8);
-				}
 				if (bestSoulGem == nullptr || dynamic_cast<TESSoulGem*>(thisEntry->type)->gemSize > dynamic_cast<TESSoulGem*>(bestSoulGem->type)->gemSize)
 				{
 					bool hasEmptyGem = false;
@@ -317,7 +307,6 @@ namespace SparkSoulGemPlugin
 		}
 		if (bestSoulGem && dynamic_cast<TESSoulGem*>(bestSoulGem->type)->gemSize >= soul_size) // there is a soulgem to fill
 		{
-			_MESSAGE("Found a soul gem, filling it...");
 			void * memBEL = FormHeap_Allocate(sizeof(BaseExtraList));
 			memset(memBEL, 0, sizeof(BaseExtraList));
 			BaseExtraList * newBEL = new (memBEL) BaseExtraList;
@@ -326,11 +315,9 @@ namespace SparkSoulGemPlugin
 			newBEL->Add(kExtraData_Soul, newExtraData);
 			if (bestSoulGem->extendDataList == nullptr || bestSoulGem->extendDataList == NULL)
 			{
-				_MESSAGE("Had to create an extendDataList");
 				bestSoulGem->extendDataList = ExtendDataList::Create();
 			}
 			bestSoulGem->extendDataList->Push(newBEL);
-			_MESSAGE("EDL count: %u", bestSoulGem->extendDataList->Count());
 			return true;
 		}
 		return false;

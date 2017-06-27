@@ -294,7 +294,7 @@ namespace SparkSoulGemPlugin
 			if (thisEntry->type->formType == kFormType_SoulGem)
 			{
 				UInt8 thisGemSize = dynamic_cast<TESSoulGem*>(thisEntry->type)->gemSize;
-				if (bestSoulGem == nullptr || (thisGemSize <= bestGemSize && thisGemSize >= soul_size))
+				if (thisGemSize >= soul_size && (bestSoulGem == nullptr || thisGemSize <= bestGemSize))
 				{
 					bool hasEmptyGem = false;
 					if (thisEntry->extendDataList->Count() == 0 || thisEntry->extendDataList->Count() < thisEntry->countDelta)

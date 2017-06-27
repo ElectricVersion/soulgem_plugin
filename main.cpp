@@ -285,12 +285,16 @@ namespace SparkSoulGemPlugin
 		InventoryEntryData * bestSoulGem = nullptr;
 		int gemIndex = -1;
 		//first, find a soul gem in the inventory
-		for (int i = 0; i < invList->Count(); i++)
+		//keep track of smallest usable soulgem we've found
+		UInt8 bestGemSize = 0;
+		// loop through all soul gems, stopping when we find a gem of the exact same size as the soulgem
+		for (int i = 0; (i < invList->Count()) && (bestGemSize != soul_size); i++)
 		{
 			thisEntry = invList->GetNthItem(i);
 			if (thisEntry->type->formType == kFormType_SoulGem)
 			{
-				if (bestSoulGem == nullptr || dynamic_cast<TESSoulGem*>(thisEntry->type)->gemSize > dynamic_cast<TESSoulGem*>(bestSoulGem->type)->gemSize)
+				UInt8 thisGemSize = dynamic_cast<TESSoulGem*>(thisEntry->type)->gemSize;
+				if (bestSoulGem == nullptr || (thisGemSize <= bestGemSize && thisGemSize >= soul_size))
 				{
 					bool hasEmptyGem = false;
 					if (thisEntry->extendDataList->Count() == 0 || thisEntry->extendDataList->Count() < thisEntry->countDelta)
@@ -299,13 +303,15 @@ namespace SparkSoulGemPlugin
 					}
 					if (hasEmptyGem && dynamic_cast<TESSoulGem*>(thisEntry->type)->soulSize == 0) // make sure it's not already full!
 					{
+						//Looks like we've found a new best soul gem!
 						bestSoulGem = thisEntry;
+						bestGemSize = thisGemSize;
 						gemIndex = i;
 					}
 				}
 			}
 		}
-		if (bestSoulGem && dynamic_cast<TESSoulGem*>(bestSoulGem->type)->gemSize >= soul_size) // there is a soulgem to fill
+		if (bestSoulGem) // there is a soulgem to fill
 		{
 			void * memBEL = FormHeap_Allocate(sizeof(BaseExtraList));
 			memset(memBEL, 0, sizeof(BaseExtraList));

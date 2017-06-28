@@ -275,11 +275,39 @@ bool BaseExtraList::Add(UInt8 type, BSExtraData* toAdd)
 	return true;
 }
 
+bool BaseExtraList::Remove(UInt8 type, BSExtraData* toRemove)
+{
+	if (!toRemove) return false;
+
+	if (HasType(type)) {
+		bool bRemoved = false;
+		if (m_data == toRemove) {
+			m_data = m_data->next;
+			bRemoved = true;
+		}
+
+		for (BSExtraData* traverse = m_data; traverse; traverse = traverse->next) {
+			if (traverse->next == toRemove) {
+				traverse->next = toRemove->next;
+				bRemoved = true;
+				break;
+			}
+		}
+		if (bRemoved) {
+			MarkType(type, true);
+		}
+		return true;
+	}
+
+	return false;
+}
+
+
 namespace SparkSoulGemPlugin
 {
 	bool FillSoulGem(Actor * targetActor, UInt32 soul_size)
 	{
-		_MESSAGE("Attempting to fill soulgem with size %u", soul_size);
+		_MESSAGE("Attempting to find soulgem with size %u", soul_size);
 		EntryDataList * invList = dynamic_cast<ExtraContainerChanges*>(targetActor->extraData.GetByType(kExtraData_ContainerChanges))->data->objList;
 		InventoryEntryData * thisEntry = nullptr;
 		InventoryEntryData * bestSoulGem = nullptr;
@@ -287,43 +315,79 @@ namespace SparkSoulGemPlugin
 		//first, find a soul gem in the inventory
 		//keep track of smallest usable soulgem we've found
 		UInt8 bestGemSize = 0;
+		BaseExtraList * bestGemBEL = nullptr;
+		BaseExtraList * thisGemBEL = nullptr;
 		// loop through all soul gems, stopping when we find a gem of the exact same size as the soulgem
 		for (int i = 0; (i < invList->Count()) && (bestGemSize != soul_size); i++)
 		{
+			thisGemBEL = nullptr;
 			thisEntry = invList->GetNthItem(i);
 			if (thisEntry->type->formType == kFormType_SoulGem)
 			{
 				UInt8 thisGemSize = dynamic_cast<TESSoulGem*>(thisEntry->type)->gemSize;
-				if (thisGemSize >= soul_size && (bestSoulGem == nullptr || thisGemSize <= bestGemSize))
+				UInt8 thisSoulSize = dynamic_cast<TESSoulGem*>(thisEntry->type)->soulSize;
+				if (thisGemSize >= soul_size && (bestSoulGem == nullptr || thisGemSize <= bestGemSize) && thisSoulSize == 0)
 				{
 					bool hasEmptyGem = false;
-					if (thisEntry->extendDataList->Count() == 0 || thisEntry->extendDataList->Count() < thisEntry->countDelta)
+					if (thisEntry->extendDataList->Count() < thisEntry->countDelta)
 					{
 						hasEmptyGem = true;
 					}
-					if (hasEmptyGem && dynamic_cast<TESSoulGem*>(thisEntry->type)->soulSize == 0) // make sure it's not already full!
+					if (!hasEmptyGem)
+					{
+						for (int i2 = 0; i2 < thisEntry->extendDataList->Count(); i2++)
+						{
+							if (thisEntry->extendDataList->GetNthItem(i2)->HasType(kExtraData_Soul))
+							{
+								if (dynamic_cast<ExtraSoul*>(thisEntry->extendDataList->GetNthItem(i2)->GetByType(kExtraData_Soul))->count == 0)
+								{
+									thisGemBEL = thisEntry->extendDataList->GetNthItem(i2);
+									hasEmptyGem = true;
+								}
+							}
+							else
+							{
+								thisGemBEL = thisEntry->extendDataList->GetNthItem(i2);
+								hasEmptyGem = true;
+							}
+						}
+					}
+					if (hasEmptyGem) // make sure it's not already full!
 					{
 						//Looks like we've found a new best soul gem!
 						bestSoulGem = thisEntry;
 						bestGemSize = thisGemSize;
+						bestGemBEL = thisGemBEL;
 						gemIndex = i;
 					}
 				}
 			}
 		}
-		if (bestSoulGem) // there is a soulgem to fill
+		if (bestSoulGem != nullptr) // there is a soulgem to fill
 		{
-			void * memBEL = FormHeap_Allocate(sizeof(BaseExtraList));
-			memset(memBEL, 0, sizeof(BaseExtraList));
-			BaseExtraList * newBEL = new (memBEL) BaseExtraList;
-			ExtraSoul * newExtraData = (ExtraSoul*)(BSExtraData::Create(sizeof(ExtraSoul), s_ExtraSoulVtbl));
-			newExtraData->count = soul_size;
-			newBEL->Add(kExtraData_Soul, newExtraData);
-			if (bestSoulGem->extendDataList == nullptr || bestSoulGem->extendDataList == NULL)
+			_MESSAGE("About to fill soul gem");
+			if (bestGemBEL == nullptr)
 			{
-				bestSoulGem->extendDataList = ExtendDataList::Create();
+				void * memBEL = FormHeap_Allocate(sizeof(BaseExtraList));
+				memset(memBEL, 0, sizeof(BaseExtraList));
+				bestGemBEL = new (memBEL) BaseExtraList;
+				if (bestSoulGem->extendDataList == nullptr || bestSoulGem->extendDataList == NULL)
+				{
+					bestSoulGem->extendDataList = ExtendDataList::Create();
+				}
+				bestSoulGem->extendDataList->Push(bestGemBEL);
+			} 
+			if (bestGemBEL->HasType(kExtraData_Soul))
+			{
+				dynamic_cast<ExtraSoul*>(bestGemBEL->GetByType(kExtraData_Soul))->count = soul_size;
 			}
-			bestSoulGem->extendDataList->Push(newBEL);
+			else
+			{
+				ExtraSoul * newExtraData = (ExtraSoul*)(BSExtraData::Create(sizeof(ExtraSoul), s_ExtraSoulVtbl));
+				newExtraData->count = soul_size;
+				bestGemBEL->Add(kExtraData_Soul, newExtraData);
+			}
+			_MESSAGE("Filled soul gem");
 			return true;
 		}
 		return false;

@@ -387,6 +387,11 @@ namespace SparkSoulGemPlugin
 				newExtraData->count = soul_size;
 				bestGemBEL->Add(kExtraData_Soul, newExtraData);
 			}
+			if (bestGemBEL->HasType(kExtraData_Count))
+			{
+				_MESSAGE("Found extradata for count");
+				bestGemBEL->Remove(kExtraData_Count, bestGemBEL->GetByType(kExtraData_Count));
+			}
 			_MESSAGE("Filled soul gem");
 			return true;
 		}

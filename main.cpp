@@ -302,10 +302,20 @@ bool BaseExtraList::Remove(UInt8 type, BSExtraData* toRemove)
 	return false;
 }
 
+class AcceptEqualPtr {
+public:
+	void * item;
+
+	AcceptEqualPtr(void * a_item) : item(a_item) {}
+
+	bool Accept(void * a_item) {
+		return item == a_item;
+	}
+};
 
 namespace SparkSoulGemPlugin
 {
-	bool FillSoulGem(Actor * targetActor, UInt32 soul_size)
+	bool FillSoulGem(StaticFunctionTag *base, Actor * targetActor, UInt32 soul_size)
 	{
 		_MESSAGE("Attempting to find soulgem with size %u", soul_size);
 		EntryDataList * invList = dynamic_cast<ExtraContainerChanges*>(targetActor->extraData.GetByType(kExtraData_ContainerChanges))->data->objList;
@@ -398,10 +408,56 @@ namespace SparkSoulGemPlugin
 		return false;
 	};
 
+	bool RemoveEmptySoulGem(StaticFunctionTag *base, Actor* targetActor, TESSoulGem* baseSoulGem)
+	{
+		EntryDataList * invList = dynamic_cast<ExtraContainerChanges*>(targetActor->extraData.GetByType(kExtraData_ContainerChanges))->data->objList;
+		InventoryEntryData * thisEntry = nullptr;
+		bool removed = false;
+		for (int i = 0; i < invList->Count(); i++)
+		{
+			thisEntry = invList->GetNthItem(i);
+			if (thisEntry->type->formType == kFormType_SoulGem)
+			{
+				TESSoulGem* thisSoulGem = dynamic_cast<TESSoulGem*>(thisEntry->type);
+				if (thisSoulGem == baseSoulGem)
+				{
+					BaseExtraList * thisEntryBEL = nullptr;
+					int thisEntryFilledSouls = 0;
+					for (int i2 = 0; i2 < thisEntry->extendDataList->Count(); i2++)
+					{
+						thisEntryBEL = thisEntry->extendDataList->GetNthItem(i2);
+						if (thisEntryBEL->HasType(kExtraData_Soul))
+						{
+							if (dynamic_cast<ExtraSoul*>(thisEntryBEL->GetByType(kExtraData_Soul))->count > 0)
+							{
+								thisEntryFilledSouls++;
+							}
+						}
+					}
+					if (thisEntry->countDelta > thisEntryFilledSouls)
+					{
+						thisEntry->countDelta--;
+						removed = true;
+					}
+					if (thisEntry->countDelta < 1)
+					{
+						invList->RemoveIf(AcceptEqualPtr(thisEntry));
+						thisEntry->Delete();
+					}
+					//there should only be one actual entry for any soul gem, so we can end the loop
+					break;
+				}
+			}
+		}
+		return removed;
+	}
+
 	bool RegisterFuncs(VMClassRegistry* registry)
 	{
 		registry->RegisterFunction(
-			new NativeFunction1<Actor, bool, UInt32>("FillSoulGem", "Actor", SparkSoulGemPlugin::FillSoulGem, registry));
+			new NativeFunction2<StaticFunctionTag, bool, Actor*, UInt32>("FillSoulGem", "SSGP", SparkSoulGemPlugin::FillSoulGem, registry));
+		registry->RegisterFunction(
+			new NativeFunction2<StaticFunctionTag, bool, Actor*, TESSoulGem*>("RemoveEmptySoulGem", "SSGP", SparkSoulGemPlugin::RemoveEmptySoulGem, registry));
 		return true;
 	};
 };

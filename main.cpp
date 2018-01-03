@@ -349,7 +349,8 @@ namespace SparkSoulGemPlugin
 						{
 							if (thisEntry->extendDataList->GetNthItem(i2)->HasType(kExtraData_Soul))
 							{
-								if (dynamic_cast<ExtraSoul*>(thisEntry->extendDataList->GetNthItem(i2)->GetByType(kExtraData_Soul))->count == 0)
+								_MESSAGE("Found soul gem with soul size %d", dynamic_cast<ExtraSoul*>(thisEntry->extendDataList->GetNthItem(i2)->GetByType(kExtraData_Soul))->count);
+								if (dynamic_cast<ExtraSoul*>(thisEntry->extendDataList->GetNthItem(i2)->GetByType(kExtraData_Soul))->count <= 0)
 								{
 									thisGemBEL = thisEntry->extendDataList->GetNthItem(i2);
 									hasEmptyGem = true;
